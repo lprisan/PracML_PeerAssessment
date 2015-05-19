@@ -5,18 +5,49 @@ date: "05/19/2015"
 output: html_document
 ---
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+<2000 words, <=5 figures
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+http://lprisan.github.io/PracML_PeerAssessment
+
+Do the 20 predictions of the test set (auto grading)
+
+
+# Executive Summary
+
+Goal: predict the manner in which they exercise (classe variable)
+
+
+# Loading and preprocessing of data
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+(data by http://groupware.les.inf.puc-rio.br/har)
+
+Maybe move this to an appendix? or just not show
 
 ```{r}
-summary(cars)
+require(caret)
+
+download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv", destfile = "./data/dataTrain.csv", method="curl")
+train <- read.csv("./data/dataTrain.csv")
+summary(train)
 ```
 
-You can also embed plots, for example:
 
-```{r, echo=FALSE}
-plot(cars)
+# Building the model
+
+
+## Cross-validation
+
+## Expected out-of-sample error
+
+## Rationale
+
+
+# Testing the model
+
+```{r}
+download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv", destfile = "./data/dataTest.csv", method="curl")
+test <- read.csv("./data/dataTest.csv")
+summary(test)
 ```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
