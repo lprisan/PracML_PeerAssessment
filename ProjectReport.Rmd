@@ -28,7 +28,7 @@ Maybe move this to an appendix? or just not show
 ```{r}
 require(caret)
 
-download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv", destfile = "./data/dataTrain.csv", method="curl")
+download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv", destfile = "./data/dataTrain.csv", method="curl", extra = "-k")
 train <- read.csv("./data/dataTrain.csv")
 summary(train)
 ```
