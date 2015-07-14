@@ -25,36 +25,43 @@ https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
 
 Maybe move this to an appendix? or just not show
 
-```{r}
+```{r, message=FALSE}
 require(caret)
 
-download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv", destfile = "./data/dataTrain.csv", method="curl", extra = "-k")
-train <- read.csv("./data/dataTrain.csv")
-summary(train)
+#download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv", destfile = "./data/dataTrain.csv", method="curl", extra = "-k")
+rawdata <- read.csv("./data/dataTrain.csv", stringsAsFactors = F)
+str(rawdata)
 ```
 
-... eliminate the variables that are not going to be tested, to simplify the model?
+... eliminate the variables that have lots of NAs or similar (do a first pass eliminating those columns with more than 1000 NAs, then eliminate the character except user_name, classe)
 
-... exploratory analysis (do variables look gaussian?) good if we want to do PCA
-
-# Building the model
-
-
-## Cross-validation
-
-## Expected out-of-sample error
-
-## Rationale
+# Splitting the data
+... split the data and keep one user out (validation set) -- maybe later do this iteratively, to see what is the average out-of-subject error?
 
 
-# Testing the model
+... split the data again into a training and a crossvalidation set (70/30), keeping the classes balanced
 
+# Exploratory analysis
+... exploratory analysis on the training data
+* (do variables look gaussian?) good if we want to do PCA
+
+# Building different models
+
+
+## Cross-validation for tuning the model?
 In-sample error: Accuracy % missed, specificity, sensitivity, +/- predictive value, ROC curves?
 
+## Expected out-of-sample error
+... to validate out of sample error, try "leave-one-subject-out" validation (train the model on some subjects, validate in another one)
 OOS/Testing error: Accuracy % missed, specificity, sensitivity, +/- predictive value, ROC curves?
 
+
+# Final Testing the model (results for the assignment submission)
+
 ```{r}
-download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv", destfile = "./data/dataTest.csv", method="curl")
+download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv", destfile = "./data/dataTest.csv", method="curl", extra="-k")
 test <- read.csv("./data/dataTest.csv")
 summary(test)
 ```
+... clean the data as for the training set
+... predict and show the confusion matrix
