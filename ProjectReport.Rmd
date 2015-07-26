@@ -17,7 +17,21 @@ Do the 20 predictions of the test set (auto grading)
 Goal: predict the manner in which they exercise (classe variable)
 
 
-# Loading and preprocessing of data
+# Analysis Question
+
+Can we predict how the exercise was performed (classe variable) in terms of the other fields (accelerometer data)?
+
+We want to build a predictor that is independent of the subject training (and we want to know how good will that predictor be for new subjects)
+
+# Error rate measurement
+
+Will use Cohen's Kappa (also the default for caret's train)
+
+
+
+# The dataset
+
+## Loading and preprocessing of data
 
 https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
 https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
@@ -27,26 +41,230 @@ Maybe move this to an appendix? or just not show
 
 ```{r, message=FALSE}
 require(caret)
+require(kernlab)
+
+# Download the training and final test sets
 
 #download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv", destfile = "./data/dataTrain.csv", method="curl", extra = "-k")
-rawdata <- read.csv("./data/dataTrain.csv", stringsAsFactors = F)
-str(rawdata)
-```
+rawtrain <- read.csv("./data/dataTrain.csv", stringsAsFactors = F)
+#summary(rawtrain)
 
-... eliminate the variables that have lots of NAs or similar (do a first pass eliminating those columns with more than 1000 NAs, then eliminate the character except user_name, classe)
+#download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv", destfile = "./data/dataTest.csv", method="curl", extra="-k")
+rawtest <- read.csv("./data/dataTest.csv")
+#summary(rawtest)
+
+# We go over the test samples, and determine which fields will contain non-NA data, to simplify the training set too and make the models simpler
+discard_fields <- numeric()
+for(i in 1:length(rawtest)){
+  if(sum(is.na(rawtest[,i]))==20) discard_fields <- c(discard_fields, i)
+}
+cleantest <- rawtest[,-discard_fields]
+cleantrain <- rawtrain[,-discard_fields]
+cleantrain$user_name <- factor(cleantrain$user_name)
+cleantrain$classe <- factor(cleantrain$classe)
+
+# We further clean the sets, to remove the "window" and "timestamp"-like variables which will not be used for prediction either
+
+cleantrain <- cleantrain[,!grepl("window",names(cleantrain))] 
+cleantrain <- cleantrain[,!grepl("timestamp",names(cleantrain))] 
+cleantrain <- cleantrain[,!grepl("X",names(cleantrain))] 
+```
+... eliminate the variables that have NAs in the test set (as they won't be used for prediction anyways)
 
 # Splitting the data
-... split the data and keep one user out (validation set) -- maybe later do this iteratively, to see what is the average out-of-subject error?
+... split the data and keep one user out (out-of-suject validation set) -- maybe later do this iteratively, to see what is the average out-of-subject error?
 
+... then, we split the rest into training, test and validation sets (60/20/20)
 
-... split the data again into a training and a crossvalidation set (70/30), keeping the classes balanced
+```{r}
+set.seed(12345)
+# Keep one subject out, as a validation set to see how much out-of-subject error we would have
+subjout <- unique(cleantrain$user_name)[1]
+isoos <- cleantrain$user_name==subjout
+oosvalSet <- cleantrain[isoos,] # To do out-of-subject validation
+nooosval <- cleantrain[!isoos,]
+
+# We split the data into training, test and validation sets (60/20/20
+inTrain <- createDataPartition(y=nooosval$classe, p=0.6, list=F)
+trainingSet <- nooosval[inTrain,]
+testvalSet <- nooosval[-inTrain,]
+inTest <- createDataPartition(y=testvalSet$classe, p=0.5, list=F) # from the remaining 40%, half (20%) goes to test set, half to the validation set
+testSet <- testvalSet[inTest,]
+valSet <- testvalSet[-inTest,]
+
+# We further clean the training dataset, to remove the user_name, that will not be used for prediction
+trainingSet <- trainingSet[,!grepl("user_name",names(trainingSet))] 
+
+```
+
 
 # Exploratory analysis
 ... exploratory analysis on the training data
 * (do variables look gaussian?) good if we want to do PCA
 
+```{r}
+# for(i in 0:9){
+#   print(featurePlot(x=trainingSet[,(i*5)+(1:5)],y=trainingSet$classe,plot="pairs"))
+# }
+# featurePlot(x=trainingSet[,51:52],y=trainingSet$classe,plot="pairs")
+# No clear single variables for predicting
+
+# Remove near-zero variance variables (actually, none of them)
+nzv <- length(nearZeroVar(trainingSet))
+if(nzv>0) trainingSet <- trainingSet[,-nearZeroVar(trainingSet)]
+# Remove highly-correlated (>0.9) variables
+trainingSet <- trainingSet[, -findCorrelation(cor(trainingSet[,-53]))]
+# Now we have 45 predictors
+
+# Do PCA? NO, it will decrease our accuracy!
+#prComp <- prcomp(trainingSet[,-45], thresh=0.5)
+#prComp$rotation
+# Or just modelFit <- train(trainingSet$outcome~.,method="glm",preProcess="pca",data=trainingSet)
+# confusionMatrix(testSet$outcome,predict(modelFit,testSet));
+
+```
+
 # Building different models
 
+```{r, cache=T}
+# Should I be using crossvalidation instead of bootstrapping?
+# ctrl <- trainControl(method = "cv", savePred=T, classProb=T)
+# in train ...  trControl = ctrl)
+
+set.seed(1234)
+library(doParallel)
+cl <- makeCluster(detectCores())
+registerDoParallel(cl)
+# We try different multiclass classification models, 
+
+# Naive Bayes, with and without centering-scaling the variables
+set.seed(7)
+nbFit <- train(classe~.,data=trainingSet,method="nb")
+print("Accuracy of NB with test data")
+cm1 <- confusionMatrix(predict(nbFit,newdata=testSet),testSet$classe)
+cm1$overall["Kappa"]
+cm1$overall["Accuracy"]
+```
+
+```{r, cache=T}
+# LDA
+set.seed(7)
+ldaFit <- train(classe~.,data=trainingSet,preProcess=c("center","scale"),method="lda")
+print("Accuracy of LDA with test data")
+cm2 <- confusionMatrix(predict(ldaFit,newdata=testSet),testSet$classe)
+cm2$overall["Kappa"]
+cm2$overall["Accuracy"]
+```
+
+```{r, cache=T}
+# Decision Trees
+set.seed(7)
+treeFit <- train(classe~.,data=trainingSet,method="rpart")
+print("Accuracy of Decision Tree with test data")
+cm3 <- confusionMatrix(predict(treeFit,newdata=testSet),testSet$classe)
+cm3$overall["Kappa"]
+cm3$overall["Accuracy"]
+```
+
+```{r, cache=T}
+# Bagged trees
+set.seed(7)
+bagFit <- train(classe~.,data=trainingSet,method="treebag")
+print("Accuracy of Bagged Tree with test data")
+cm4 <- confusionMatrix(predict(bagFit,newdata=testSet),testSet$classe)
+cm4$overall["Kappa"]
+cm4$overall["Accuracy"]
+```
+
+```{r, cache=T}
+# Random Forests
+set.seed(7)
+rfFit <- train(classe~.,data=trainingSet,method="rf", prox=T)
+print("Accuracy of Random Forest with test data")
+cm5 <- confusionMatrix(predict(rfFit,newdata=testSet),testSet$classe)
+cm5$overall["Kappa"]
+cm5$overall["Accuracy"]
+```
+
+```{r, cache=T}
+# Nearest Neighbors
+set.seed(7)
+knnFit <- train(classe~.,data=trainingSet,method="knn")
+print("Accuracy of K Nearest Neighbors with test data")
+cm6 <- confusionMatrix(predict(knnFit,newdata=testSet),testSet$classe)
+cm6$overall["Kappa"]
+cm6$overall["Accuracy"]
+```
+
+```{r, cache=T}
+# boosted trees gbm
+set.seed(7)
+gbmFit <- train(classe~.,data=trainingSet,method="gbm", verbose=F)
+print("Accuracy of GBM (boosted trees) with test data")
+cm7 <- confusionMatrix(predict(gbmFit,newdata=testSet),testSet$classe)
+cm7$overall["Kappa"]
+cm7$overall["Accuracy"]
+```
+
+```{r, cache=T}
+# boosted additive model
+set.seed(7)
+gamFit <- train(classe~.,data=trainingSet,method="gamboost", verbose=F)
+print("Accuracy of GAM (boosted additive model) with test data")
+cm8 <- confusionMatrix(predict(gamFit,newdata=testSet),testSet$classe)
+cm8$overall["Kappa"]
+cm8$overall["Accuracy"]
+```
+
+```{r, cache=T}
+# boosted logistic regression (ada)
+set.seed(7)
+adaFit <- train(classe~.,data=trainingSet,method="ada", verbose=F)
+print("Accuracy of ADA (boosted additive logistic regression) with test data")
+cm9 <- confusionMatrix(predict(adaFit,newdata=testSet),testSet$classe)
+cm9$overall["Kappa"]
+cm9$overall["Accuracy"]
+```
+
+```{r, cache=T}
+# Support vector machine?
+set.seed(7)
+svmFit <- train(classe~.,data=trainingSet,method="svmLinear")
+print("Accuracy of SVM with test data")
+cm10 <- confusionMatrix(predict(svmFit,newdata=testSet),testSet$classe)
+cm10$overall["Kappa"]
+cm10$overall["Accuracy"]
+```
+
+```{r, cache=T}
+# Neural network
+my.grid <- expand.grid(.decay = c(0.5, 0.1), .size = c(5, 6, 7))
+nnFit <- train(classe ~ ., data = trainingSet,
+    method = "nnet", maxit = 1000, tuneGrid = my.grid, trace = F) 
+print("Accuracy of Neural Network with test data")
+cmx <- confusionMatrix(predict(nnFit,newdata=testSet),testSet$classe)
+cmx$overall["Kappa"]
+cmx$overall["Accuracy"]
+```
+
+```{r, cache=T}
+# Try some stacked models?
+# 1) split into train/validation/test sets; 2) train different kinds of models using the training dataset; 3) create a new dataset with the predictions from the models in step 2, and the actual training outcomes as the outcome column; 4) fit another (e.g., "gam", "rf") model to this new dataset, and get these "improved predictions" ; 5) compare errors of each model and the combined one (sqrt(sum((pred-testing$outcome)^2))); 6) Predict and calculate errors of all models in the validation set (predict for the individual models valiation set, then re-predict the combined one with those predictions)
+#** For binary/multiclass data, normally predict with an odd number of models, and then do majority "vote" with the predictions they give
+```
+
+
+# Comparing the models
+
+```{r}
+results <- resamples(list(NB=nbFit, LDA=ldaFit, TREE=treeFit, BAG=bagFit, RF=rfFit, KNN=knnFit, GBM=gbmFit, GAM=gamFit, ADA=adaFit, ANN=nnFit, SVM=svmFit)) #Do for all the models tried out
+# summarize the distributions
+summary(results)
+# boxplots of results
+bwplot(results)
+# dot plots of results
+dotplot(results)
+```
 
 ## Cross-validation for tuning the model?
 In-sample error: Accuracy % missed, specificity, sensitivity, +/- predictive value, ROC curves?
@@ -59,9 +277,7 @@ OOS/Testing error: Accuracy % missed, specificity, sensitivity, +/- predictive v
 # Final Testing the model (results for the assignment submission)
 
 ```{r}
-download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv", destfile = "./data/dataTest.csv", method="curl", extra="-k")
-test <- read.csv("./data/dataTest.csv")
-summary(test)
+
 ```
 ... clean the data as for the training set
-... predict and show the confusion matrix
+... predict the test set and the results
