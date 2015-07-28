@@ -126,7 +126,7 @@ trainingSet <- trainingSet[, -findCorrelation(cor(trainingSet[,-53]))]
 
 # Building different models
 
-```{r, cache=T}
+```{r, cache=T, warning=F}
 # Should I be using crossvalidation instead of bootstrapping?
 # ctrl <- trainControl(method = "cv", savePred=T, classProb=T)
 # in train ...  trControl = ctrl)
@@ -146,7 +146,7 @@ cm1$overall["Kappa"]
 cm1$overall["Accuracy"]
 ```
 
-```{r, cache=T}
+```{r, cache=T, warning=F}
 # LDA
 set.seed(7)
 ldaFit <- train(classe~.,data=trainingSet,preProcess=c("center","scale"),method="lda")
@@ -156,7 +156,7 @@ cm2$overall["Kappa"]
 cm2$overall["Accuracy"]
 ```
 
-```{r, cache=T}
+```{r, cache=T, warning=F}
 # Decision Trees
 set.seed(7)
 treeFit <- train(classe~.,data=trainingSet,method="rpart")
@@ -166,7 +166,7 @@ cm3$overall["Kappa"]
 cm3$overall["Accuracy"]
 ```
 
-```{r, cache=T}
+```{r, cache=T, warning=F}
 # Bagged trees
 set.seed(7)
 bagFit <- train(classe~.,data=trainingSet,method="treebag")
@@ -176,7 +176,7 @@ cm4$overall["Kappa"]
 cm4$overall["Accuracy"]
 ```
 
-```{r, cache=T}
+```{r, cache=T, warning=F}
 # Random Forests
 set.seed(7)
 rfFit <- train(classe~.,data=trainingSet,method="rf", prox=T)
@@ -186,7 +186,7 @@ cm5$overall["Kappa"]
 cm5$overall["Accuracy"]
 ```
 
-```{r, cache=T}
+```{r, cache=T, warning=F}
 # Nearest Neighbors
 set.seed(7)
 knnFit <- train(classe~.,data=trainingSet,method="knn")
@@ -196,7 +196,7 @@ cm6$overall["Kappa"]
 cm6$overall["Accuracy"]
 ```
 
-```{r, cache=T}
+```{r, cache=T, warning=F}
 # boosted trees gbm
 set.seed(7)
 gbmFit <- train(classe~.,data=trainingSet,method="gbm", verbose=F)
@@ -206,27 +206,28 @@ cm7$overall["Kappa"]
 cm7$overall["Accuracy"]
 ```
 
-```{r, cache=T}
+```{r, cache=T, warning=F}
 # boosted additive model
-set.seed(7)
-gamFit <- train(classe~.,data=trainingSet,method="gamboost", verbose=F)
-print("Accuracy of GAM (boosted additive model) with test data")
-cm8 <- confusionMatrix(predict(gamFit,newdata=testSet),testSet$classe)
-cm8$overall["Kappa"]
-cm8$overall["Accuracy"]
+# TODO: For some reason, this fails!
+# set.seed(7)
+# gamFit <- train(classe~.,data=trainingSet,method="gamboost", verbose=F)
+# print("Accuracy of GAM (boosted additive model) with test data")
+# cm8 <- confusionMatrix(predict(gamFit,newdata=testSet),testSet$classe)
+# cm8$overall["Kappa"]
+# cm8$overall["Accuracy"]
 ```
 
-```{r, cache=T}
-# boosted logistic regression (ada)
-set.seed(7)
-adaFit <- train(classe~.,data=trainingSet,method="ada", verbose=F)
-print("Accuracy of ADA (boosted additive logistic regression) with test data")
-cm9 <- confusionMatrix(predict(adaFit,newdata=testSet),testSet$classe)
-cm9$overall["Kappa"]
-cm9$overall["Accuracy"]
+```{r, cache=T, warning=F}
+# boosted logistic regression (ada) also fails!
+# set.seed(7)
+# adaFit <- train(classe~.,data=trainingSet,method="ada", verbose=F)
+# print("Accuracy of ADA (boosted additive logistic regression) with test data")
+# cm9 <- confusionMatrix(predict(adaFit,newdata=testSet),testSet$classe)
+# cm9$overall["Kappa"]
+# cm9$overall["Accuracy"]
 ```
 
-```{r, cache=T}
+```{r, cache=T, warning=F}
 # Support vector machine?
 set.seed(7)
 svmFit <- train(classe~.,data=trainingSet,method="svmLinear")
@@ -236,7 +237,7 @@ cm10$overall["Kappa"]
 cm10$overall["Accuracy"]
 ```
 
-```{r, cache=T}
+```{r, cache=T, warning=F}
 # Neural network
 my.grid <- expand.grid(.decay = c(0.5, 0.1), .size = c(5, 6, 7))
 nnFit <- train(classe ~ ., data = trainingSet,
@@ -247,7 +248,7 @@ cmx$overall["Kappa"]
 cmx$overall["Accuracy"]
 ```
 
-```{r, cache=T}
+```{r, cache=T, warning=F}
 # Try some stacked models?
 # 1) split into train/validation/test sets; 2) train different kinds of models using the training dataset; 3) create a new dataset with the predictions from the models in step 2, and the actual training outcomes as the outcome column; 4) fit another (e.g., "gam", "rf") model to this new dataset, and get these "improved predictions" ; 5) compare errors of each model and the combined one (sqrt(sum((pred-testing$outcome)^2))); 6) Predict and calculate errors of all models in the validation set (predict for the individual models valiation set, then re-predict the combined one with those predictions)
 #** For binary/multiclass data, normally predict with an odd number of models, and then do majority "vote" with the predictions they give
@@ -257,7 +258,7 @@ cmx$overall["Accuracy"]
 # Comparing the models
 
 ```{r}
-results <- resamples(list(NB=nbFit, LDA=ldaFit, TREE=treeFit, BAG=bagFit, RF=rfFit, KNN=knnFit, GBM=gbmFit, GAM=gamFit, ADA=adaFit, ANN=nnFit, SVM=svmFit)) #Do for all the models tried out
+results <- resamples(list(NB=nbFit, LDA=ldaFit, TREE=treeFit, BAG=bagFit, RF=rfFit, KNN=knnFit, GBM=gbmFit, ANN=nnFit, SVM=svmFit)) #Do for all the models tried out
 # summarize the distributions
 summary(results)
 # boxplots of results
