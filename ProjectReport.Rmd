@@ -140,70 +140,98 @@ registerDoParallel(cl)
 # Naive Bayes, with and without centering-scaling the variables
 set.seed(7)
 nbFit <- train(classe~.,data=trainingSet,method="nb")
-print("Accuracy of NB with test data")
-cm1 <- confusionMatrix(predict(nbFit,newdata=testSet),testSet$classe)
-cm1$overall["Kappa"]
-cm1$overall["Accuracy"]
+# print("Accuracy of NB with test data")
+# cm1 <- confusionMatrix(predict(nbFit,newdata=testSet),testSet$classe)
+# cm1$overall["Kappa"]
+# cm1$overall["Accuracy"]
+print("Accuracy of NB with OOS test data")
+cm1b <- confusionMatrix(predict(nbFit,newdata=oosvalSet),oosvalSet$classe)
+cm1b$overall["Kappa"]
+cm1b$overall["Accuracy"]
 ```
 
 ```{r, cache=T, warning=F}
 # LDA
 set.seed(7)
 ldaFit <- train(classe~.,data=trainingSet,preProcess=c("center","scale"),method="lda")
-print("Accuracy of LDA with test data")
-cm2 <- confusionMatrix(predict(ldaFit,newdata=testSet),testSet$classe)
-cm2$overall["Kappa"]
-cm2$overall["Accuracy"]
+# print("Accuracy of LDA with test data")
+# cm2 <- confusionMatrix(predict(ldaFit,newdata=testSet),testSet$classe)
+# cm2$overall["Kappa"]
+# cm2$overall["Accuracy"]
+print("Accuracy of LDA with OOS test data")
+cm2b <- confusionMatrix(predict(ldaFit,newdata=oosvalSet),oosvalSet$classe)
+cm2b$overall["Kappa"]
+cm2b$overall["Accuracy"]
 ```
 
 ```{r, cache=T, warning=F}
 # Decision Trees
 set.seed(7)
 treeFit <- train(classe~.,data=trainingSet,method="rpart")
-print("Accuracy of Decision Tree with test data")
-cm3 <- confusionMatrix(predict(treeFit,newdata=testSet),testSet$classe)
-cm3$overall["Kappa"]
-cm3$overall["Accuracy"]
+# print("Accuracy of Decision Tree with test data")
+# cm3 <- confusionMatrix(predict(treeFit,newdata=testSet),testSet$classe)
+# cm3$overall["Kappa"]
+# cm3$overall["Accuracy"]
+print("Accuracy of Decision Tree with OOS test data")
+cm3b <- confusionMatrix(predict(treeFit,newdata=oosvalSet),oosvalSet$classe)
+cm3b$overall["Kappa"]
+cm3b$overall["Accuracy"]
 ```
 
 ```{r, cache=T, warning=F}
 # Bagged trees
 set.seed(7)
 bagFit <- train(classe~.,data=trainingSet,method="treebag")
-print("Accuracy of Bagged Tree with test data")
-cm4 <- confusionMatrix(predict(bagFit,newdata=testSet),testSet$classe)
-cm4$overall["Kappa"]
-cm4$overall["Accuracy"]
+# print("Accuracy of Bagged Tree with test data")
+# cm4 <- confusionMatrix(predict(bagFit,newdata=testSet),testSet$classe)
+# cm4$overall["Kappa"]
+# cm4$overall["Accuracy"]
+print("Accuracy of Bagged Tree with OOS test data")
+cm4b <- confusionMatrix(predict(bagFit,newdata=oosvalSet),oosvalSet$classe)
+cm4b$overall["Kappa"]
+cm4b$overall["Accuracy"]
 ```
 
 ```{r, cache=T, warning=F}
 # Random Forests
 set.seed(7)
 rfFit <- train(classe~.,data=trainingSet,method="rf", prox=T)
-print("Accuracy of Random Forest with test data")
-cm5 <- confusionMatrix(predict(rfFit,newdata=testSet),testSet$classe)
-cm5$overall["Kappa"]
-cm5$overall["Accuracy"]
+# print("Accuracy of Random Forest with test data")
+# cm5 <- confusionMatrix(predict(rfFit,newdata=testSet),testSet$classe)
+# cm5$overall["Kappa"]
+# cm5$overall["Accuracy"]
+print("Accuracy of Random Forest with OOS test data")
+cm5b <- confusionMatrix(predict(rfFit,newdata=oosvalSet),oosvalSet$classe)
+cm5b$overall["Kappa"]
+cm5b$overall["Accuracy"]
 ```
 
 ```{r, cache=T, warning=F}
 # Nearest Neighbors
 set.seed(7)
 knnFit <- train(classe~.,data=trainingSet,method="knn")
-print("Accuracy of K Nearest Neighbors with test data")
-cm6 <- confusionMatrix(predict(knnFit,newdata=testSet),testSet$classe)
-cm6$overall["Kappa"]
-cm6$overall["Accuracy"]
+# print("Accuracy of K Nearest Neighbors with test data")
+# cm6 <- confusionMatrix(predict(knnFit,newdata=testSet),testSet$classe)
+# cm6$overall["Kappa"]
+# cm6$overall["Accuracy"]
+print("Accuracy of K Nearest Neighbors with OOS test data")
+cm6b <- confusionMatrix(predict(knnFit,newdata=oosvalSet),oosvalSet$classe)
+cm6b$overall["Kappa"]
+cm6b$overall["Accuracy"]
 ```
 
 ```{r, cache=T, warning=F}
 # boosted trees gbm
 set.seed(7)
 gbmFit <- train(classe~.,data=trainingSet,method="gbm", verbose=F)
-print("Accuracy of GBM (boosted trees) with test data")
-cm7 <- confusionMatrix(predict(gbmFit,newdata=testSet),testSet$classe)
-cm7$overall["Kappa"]
-cm7$overall["Accuracy"]
+# print("Accuracy of GBM (boosted trees) with test data")
+# cm7 <- confusionMatrix(predict(gbmFit,newdata=testSet),testSet$classe)
+# cm7$overall["Kappa"]
+# cm7$overall["Accuracy"]
+print("Accuracy of GBM with OOS test data")
+cm7b <- confusionMatrix(predict(gbmFit,newdata=oosvalSet),oosvalSet$classe)
+cm7b$overall["Kappa"]
+cm7b$overall["Accuracy"]
 ```
 
 ```{r, cache=T, warning=F}
@@ -231,10 +259,14 @@ cm7$overall["Accuracy"]
 # Support vector machine?
 set.seed(7)
 svmFit <- train(classe~.,data=trainingSet,method="svmLinear")
-print("Accuracy of SVM with test data")
-cm10 <- confusionMatrix(predict(svmFit,newdata=testSet),testSet$classe)
-cm10$overall["Kappa"]
-cm10$overall["Accuracy"]
+# print("Accuracy of SVM with test data")
+# cm10 <- confusionMatrix(predict(svmFit,newdata=testSet),testSet$classe)
+# cm10$overall["Kappa"]
+# cm10$overall["Accuracy"]
+print("Accuracy of SVM with OOS test data")
+cm10b <- confusionMatrix(predict(svmFit,newdata=oosvalSet),oosvalSet$classe)
+cm10b$overall["Kappa"]
+cm10b$overall["Accuracy"]
 ```
 
 ```{r, cache=T, warning=F}
@@ -242,14 +274,20 @@ cm10$overall["Accuracy"]
 my.grid <- expand.grid(.decay = c(0.5, 0.1), .size = c(5, 6, 7))
 nnFit <- train(classe ~ ., data = trainingSet,
     method = "nnet", maxit = 1000, tuneGrid = my.grid, trace = F) 
-print("Accuracy of Neural Network with test data")
-cmx <- confusionMatrix(predict(nnFit,newdata=testSet),testSet$classe)
-cmx$overall["Kappa"]
-cmx$overall["Accuracy"]
+# print("Accuracy of Neural Network with test data")
+# cmx <- confusionMatrix(predict(nnFit,newdata=testSet),testSet$classe)
+# cmx$overall["Kappa"]
+# cmx$overall["Accuracy"]
+print("Accuracy of Neural Network with OOS test data")
+cmxb <- confusionMatrix(predict(nnFit,newdata=oosvalSet),oosvalSet$classe)
+cmxb$overall["Kappa"]
+cmxb$overall["Accuracy"]
 ```
 
 ```{r, cache=T, warning=F}
-# Try some stacked models?
+# TODO: Try some stacked models?
+# TODO: Try some PCA or regularization to see if we can avoid overfitting?
+
 # 1) split into train/validation/test sets; 2) train different kinds of models using the training dataset; 3) create a new dataset with the predictions from the models in step 2, and the actual training outcomes as the outcome column; 4) fit another (e.g., "gam", "rf") model to this new dataset, and get these "improved predictions" ; 5) compare errors of each model and the combined one (sqrt(sum((pred-testing$outcome)^2))); 6) Predict and calculate errors of all models in the validation set (predict for the individual models valiation set, then re-predict the combined one with those predictions)
 #** For binary/multiclass data, normally predict with an odd number of models, and then do majority "vote" with the predictions they give
 ```
