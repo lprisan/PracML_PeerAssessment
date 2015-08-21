@@ -1,45 +1,41 @@
 ---
 title: 'Practical Machine Learning: Course Project'
 author: "Luis P."
-date: "05/19/2015"
+date: "08/20/2015"
 output: html_document
 ---
 
-<2000 words, <=5 figures
-
-http://lprisan.github.io/PracML_PeerAssessment
-
-Do the 20 predictions of the test set (auto grading)
-
+<!--<2000 words, <=5 figures-->
 
 # Executive Summary
 
-Goal: predict the manner in which they exercise (classe variable)
+This report describes briefly the preprocessing, exploratory analysis, training and testing/validation of a machine learning algorithm, using different wearable sensors to predict (i.e., automatically detect) the manner in which a set of weight exercises is done (e.g., correctly, or incorrectly in different ways), performed by several individuals. After exploring the data and selecting the most interesting features, we trained several algorithms for such prediction, leading us to use XXXXXXXXXXXXXXXXX, which achieved an accuracy of XXXXXXX (Kappa=XXXXX) on in-sample testing, XXXXX (Kappa=XXXXX) on out-of-sample tests, and XXXXXX (Kappa=XXXXX) in out-of-subject testing (which might be a good prediction for the accuracy of the algorithm with new subjects).
 
 
-# Analysis Question
+# Analysis Questions
 
-Can we predict how the exercise was performed (classe variable) in terms of the other fields (accelerometer data)?
+Given the dataset for weight exercises available from [http://groupware.les.inf.puc-rio.br/har], we want to answer the following questions: 
 
-We want to build a predictor that is independent of the subject training (and we want to know how good will that predictor be for new subjects)
+1. Can we predict how the exercise was performed (**classe variable**) in terms of the other fields (accelerometer data)?
+2. We want to build a predictor that is **independent of the subject training** (and we want to know how good will that predictor be for new subjects)
 
 # Error rate measurement
 
-Will use Cohen's Kappa (also the default for caret's train)
+There are different measurements of error that can be used to compare the algorithms we will train. In general, we will use **Cohen's Kappa** as the main error/accuracy measurement variable (which is also the one used by the caret package, by default).
 
+Using this variable, there are several kinds of error that we can measure:
+
+* In-sample error: How many of our initial training samples in the algorithm able to predict accurately? (this is an optimistic estimation of the error)
+* Out-of-sample error: How many samples that our algorithm has never seen (but still from the same set of subjects) can we predict accurately? (this is slightly less optimistic)
+* Out-of-subject error: How many samples from a new subject (never seen in the training phase) can we predict accurately? This is the most realistic estimation of accuracy for the algorithm's accuracy independently of the subject training, and for new subjects we have never seen
 
 
 # The dataset
 
-## Loading and preprocessing of data
+## Loading and preprocessing of data (cleaning the training dataset)
 
-https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
-https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
-(data by http://groupware.les.inf.puc-rio.br/har)
-
-Maybe move this to an appendix? or just not show
-
-```{r, message=FALSE}
+Once we download the data files and load them in R, a basic exploration of the dataset show us that several of the variables have mostly missing values. Thus, we remove those features as they are unlikely to contribute to the classification module. We also remove other non-interesting variables, such as the `timestamp` or the `window`, and ensure that the `classe` we want to predict and the subjects are factor variables (code not shown for brevity).
+```{r, message=FALSE, echo=F, warning=F}
 require(caret)
 require(kernlab)
 
@@ -63,18 +59,20 @@ cleantrain <- rawtrain[,-discard_fields]
 cleantrain$user_name <- factor(cleantrain$user_name)
 cleantrain$classe <- factor(cleantrain$classe)
 
-# We further clean the sets, to remove the "window" and "timestamp"-like variables which will not be used for prediction either
-
+# We further clean the sets, to remove the "window"- and "timestamp"-like variables which will not be used for prediction either
 cleantrain <- cleantrain[,!grepl("window",names(cleantrain))] 
 cleantrain <- cleantrain[,!grepl("timestamp",names(cleantrain))] 
 cleantrain <- cleantrain[,!grepl("X",names(cleantrain))] 
 ```
-... eliminate the variables that have NAs in the test set (as they won't be used for prediction anyways)
 
-# Splitting the data
-... split the data and keep one user out (out-of-suject validation set) -- maybe later do this iteratively, to see what is the average out-of-subject error?
+## Splitting the data
+After this initial cleanup, we split the dataset in the following fashion (again, code not shown for brevity):
 
-... then, we split the rest into training, test and validation sets (60/20/20)
+1. We take all the samples of one of the subjects, and set them aside to estimate our **out-of-subject error** at the end of the process
+2. With the remaining samples, we do a 60/20/20 split, so that we have:
+    a. 60% of the samples for training the algorithms. Within this subset we can do a first estimation (and comparison) of the **in-sample error**
+    b. 20% of the samples to test the algorithms and compare them against each other
+    c. 20% of the samples to do the final testing of the **out-of-sample error**
 
 ```{r}
 set.seed(12345)
@@ -91,50 +89,47 @@ testvalSet <- nooosval[-inTrain,]
 inTest <- createDataPartition(y=testvalSet$classe, p=0.5, list=F) # from the remaining 40%, half (20%) goes to test set, half to the validation set
 testSet <- testvalSet[inTest,]
 valSet <- testvalSet[-inTest,]
-
-# We further clean the training dataset, to remove the user_name, that will not be used for prediction
-trainingSet <- trainingSet[,!grepl("user_name",names(trainingSet))] 
-
 ```
 
-
-# Exploratory analysis
-... exploratory analysis on the training data
-* (do variables look gaussian?) good if we want to do PCA
-
+Once we have this clean training set, we further reduce the dimensionality of the dataset by removing near-zero variance features and highly-correlated predictors. 
 ```{r}
-# for(i in 0:9){
-#   print(featurePlot(x=trainingSet[,(i*5)+(1:5)],y=trainingSet$classe,plot="pairs"))
-# }
-# featurePlot(x=trainingSet[,51:52],y=trainingSet$classe,plot="pairs")
-# No clear single variables for predicting
-
 # Remove near-zero variance variables (actually, none of them)
 nzv <- length(nearZeroVar(trainingSet))
 if(nzv>0) trainingSet <- trainingSet[,-nearZeroVar(trainingSet)]
 # Remove highly-correlated (>0.9) variables
-trainingSet <- trainingSet[, -findCorrelation(cor(trainingSet[,-53]))]
-# Now we have 45 predictors
+trainingSet <- trainingSet[, -findCorrelation(cor(trainingSet[,-c(1,54)]))]
+```
+Hence, our clean training set has `r (length(trainingSet)-1)` predictors.
 
-# Do PCA? NO, it will decrease our accuracy!
-#prComp <- prcomp(trainingSet[,-45], thresh=0.5)
-#prComp$rotation
-# Or just modelFit <- train(trainingSet$outcome~.,method="glm",preProcess="pca",data=trainingSet)
-# confusionMatrix(testSet$outcome,predict(modelFit,testSet));
+# Exploratory analysis
+Once we have our clean training dataset, we explore its variables (mostly, through density plots and Shapiro-Wilk tests for normality). Only one variable's set of graphs is shown here, for brevity. Actually, we find that many of the variables' densities look as additions of gaussians (so maybe generalized additive models would work well on this dataset?. We also plot the outcome variable (`classe`) against the different variables, to see if there are clear important predictors for that variable (not shown for brevity). We actually find no clear single one.
+```{r, echo=F, warning=FALSE, message=FALSE}
+# Density and normality tests
+i <- 1
+#for(i in 1:(length(trainingSet)-1) ){
+    par(mfrow=c(1,2))
+    plot(density(trainingSet[,i]))
+    shapiro.test(trainingSet[1:5000,i])
+    qqnorm(trainingSet[,i])
+    qqline(trainingSet[,i])
+#}
 
+# for(i in 0:9){
+#   print(featurePlot(x=trainingSet[,(i*5)+(1:5)],y=trainingSet$classe,plot="pairs"))
+# }
+# featurePlot(x=trainingSet[,51:52],y=trainingSet$classe,plot="pairs")
 ```
 
-# Building different models
+# Training different prediction models
 
+Now, we train different algorithms we know for predictors:
+
+* Naive Bayes (NB)
 ```{r, cache=T, warning=F}
-# Should I be using crossvalidation instead of bootstrapping?
-# ctrl <- trainControl(method = "cv", savePred=T, classProb=T)
-# in train ...  trControl = ctrl)
-
 set.seed(1234)
-library(doParallel)
-cl <- makeCluster(detectCores())
-registerDoParallel(cl)
+#library(doParallel)
+#cl <- makeCluster(detectCores())
+#registerDoParallel(cl)
 # We try different multiclass classification models, 
 
 # Naive Bayes, with and without centering-scaling the variables
@@ -144,12 +139,12 @@ nbFit <- train(classe~.,data=trainingSet,method="nb")
 # cm1 <- confusionMatrix(predict(nbFit,newdata=testSet),testSet$classe)
 # cm1$overall["Kappa"]
 # cm1$overall["Accuracy"]
-print("Accuracy of NB with OOS test data")
-cm1b <- confusionMatrix(predict(nbFit,newdata=oosvalSet),oosvalSet$classe)
-cm1b$overall["Kappa"]
-cm1b$overall["Accuracy"]
+# print("Accuracy of NB with OOS test data")
+# cm1b <- confusionMatrix(predict(nbFit,newdata=oosvalSet),oosvalSet$classe)
+# cm1b$overall["Kappa"]
+# cm1b$overall["Accuracy"]
 ```
-
+* Linear Discriminant Analysis (LDA)
 ```{r, cache=T, warning=F}
 # LDA
 set.seed(7)
@@ -158,12 +153,12 @@ ldaFit <- train(classe~.,data=trainingSet,preProcess=c("center","scale"),method=
 # cm2 <- confusionMatrix(predict(ldaFit,newdata=testSet),testSet$classe)
 # cm2$overall["Kappa"]
 # cm2$overall["Accuracy"]
-print("Accuracy of LDA with OOS test data")
-cm2b <- confusionMatrix(predict(ldaFit,newdata=oosvalSet),oosvalSet$classe)
-cm2b$overall["Kappa"]
-cm2b$overall["Accuracy"]
+# print("Accuracy of LDA with OOS test data")
+# cm2b <- confusionMatrix(predict(ldaFit,newdata=oosvalSet),oosvalSet$classe)
+# cm2b$overall["Kappa"]
+# cm2b$overall["Accuracy"]
 ```
-
+* Simple Decision Tree 
 ```{r, cache=T, warning=F}
 # Decision Trees
 set.seed(7)
@@ -172,12 +167,12 @@ treeFit <- train(classe~.,data=trainingSet,method="rpart")
 # cm3 <- confusionMatrix(predict(treeFit,newdata=testSet),testSet$classe)
 # cm3$overall["Kappa"]
 # cm3$overall["Accuracy"]
-print("Accuracy of Decision Tree with OOS test data")
-cm3b <- confusionMatrix(predict(treeFit,newdata=oosvalSet),oosvalSet$classe)
-cm3b$overall["Kappa"]
-cm3b$overall["Accuracy"]
+# print("Accuracy of Decision Tree with OOS test data")
+# cm3b <- confusionMatrix(predict(treeFit,newdata=oosvalSet),oosvalSet$classe)
+# cm3b$overall["Kappa"]
+# cm3b$overall["Accuracy"]
 ```
-
+* Bagged Decision Trees
 ```{r, cache=T, warning=F}
 # Bagged trees
 set.seed(7)
@@ -186,12 +181,12 @@ bagFit <- train(classe~.,data=trainingSet,method="treebag")
 # cm4 <- confusionMatrix(predict(bagFit,newdata=testSet),testSet$classe)
 # cm4$overall["Kappa"]
 # cm4$overall["Accuracy"]
-print("Accuracy of Bagged Tree with OOS test data")
-cm4b <- confusionMatrix(predict(bagFit,newdata=oosvalSet),oosvalSet$classe)
-cm4b$overall["Kappa"]
-cm4b$overall["Accuracy"]
+# print("Accuracy of Bagged Tree with OOS test data")
+# cm4b <- confusionMatrix(predict(bagFit,newdata=oosvalSet),oosvalSet$classe)
+# cm4b$overall["Kappa"]
+# cm4b$overall["Accuracy"]
 ```
-
+* Random Forest (RF)
 ```{r, cache=T, warning=F}
 # Random Forests
 set.seed(7)
@@ -200,12 +195,12 @@ rfFit <- train(classe~.,data=trainingSet,method="rf", prox=T)
 # cm5 <- confusionMatrix(predict(rfFit,newdata=testSet),testSet$classe)
 # cm5$overall["Kappa"]
 # cm5$overall["Accuracy"]
-print("Accuracy of Random Forest with OOS test data")
-cm5b <- confusionMatrix(predict(rfFit,newdata=oosvalSet),oosvalSet$classe)
-cm5b$overall["Kappa"]
-cm5b$overall["Accuracy"]
+# print("Accuracy of Random Forest with OOS test data")
+# cm5b <- confusionMatrix(predict(rfFit,newdata=oosvalSet),oosvalSet$classe)
+# cm5b$overall["Kappa"]
+# cm5b$overall["Accuracy"]
 ```
-
+* K-Nearest Neighbors (KNN)
 ```{r, cache=T, warning=F}
 # Nearest Neighbors
 set.seed(7)
@@ -214,12 +209,12 @@ knnFit <- train(classe~.,data=trainingSet,method="knn")
 # cm6 <- confusionMatrix(predict(knnFit,newdata=testSet),testSet$classe)
 # cm6$overall["Kappa"]
 # cm6$overall["Accuracy"]
-print("Accuracy of K Nearest Neighbors with OOS test data")
-cm6b <- confusionMatrix(predict(knnFit,newdata=oosvalSet),oosvalSet$classe)
-cm6b$overall["Kappa"]
-cm6b$overall["Accuracy"]
+# print("Accuracy of K Nearest Neighbors with OOS test data")
+# cm6b <- confusionMatrix(predict(knnFit,newdata=oosvalSet),oosvalSet$classe)
+# cm6b$overall["Kappa"]
+# cm6b$overall["Accuracy"]
 ```
-
+* Gradient-Boosted Trees (GBM)
 ```{r, cache=T, warning=F}
 # boosted trees gbm
 set.seed(7)
@@ -228,75 +223,43 @@ gbmFit <- train(classe~.,data=trainingSet,method="gbm", verbose=F)
 # cm7 <- confusionMatrix(predict(gbmFit,newdata=testSet),testSet$classe)
 # cm7$overall["Kappa"]
 # cm7$overall["Accuracy"]
-print("Accuracy of GBM with OOS test data")
-cm7b <- confusionMatrix(predict(gbmFit,newdata=oosvalSet),oosvalSet$classe)
-cm7b$overall["Kappa"]
-cm7b$overall["Accuracy"]
+# print("Accuracy of GBM with OOS test data")
+# cm7b <- confusionMatrix(predict(gbmFit,newdata=oosvalSet),oosvalSet$classe)
+# cm7b$overall["Kappa"]
+# cm7b$overall["Accuracy"]
 ```
-
+* Generalized Additive Models (GAM)
 ```{r, cache=T, warning=F}
-# boosted additive model
-# TODO: For some reason, this fails!
-# set.seed(7)
-# gamFit <- train(classe~.,data=trainingSet,method="gamboost", verbose=F)
+# generalized additive model
+set.seed(7)
+gamFit <- train(classe~.,data=trainingSet,method="gam", verbose=F)
 # print("Accuracy of GAM (boosted additive model) with test data")
 # cm8 <- confusionMatrix(predict(gamFit,newdata=testSet),testSet$classe)
 # cm8$overall["Kappa"]
 # cm8$overall["Accuracy"]
 ```
-
+* Support Vector Machine (SVM)
 ```{r, cache=T, warning=F}
-# boosted logistic regression (ada) also fails!
-# set.seed(7)
-# adaFit <- train(classe~.,data=trainingSet,method="ada", verbose=F)
-# print("Accuracy of ADA (boosted additive logistic regression) with test data")
-# cm9 <- confusionMatrix(predict(adaFit,newdata=testSet),testSet$classe)
-# cm9$overall["Kappa"]
-# cm9$overall["Accuracy"]
-```
-
-```{r, cache=T, warning=F}
-# Support vector machine?
+# Support vector machine
 set.seed(7)
 svmFit <- train(classe~.,data=trainingSet,method="svmLinear")
 # print("Accuracy of SVM with test data")
 # cm10 <- confusionMatrix(predict(svmFit,newdata=testSet),testSet$classe)
 # cm10$overall["Kappa"]
 # cm10$overall["Accuracy"]
-print("Accuracy of SVM with OOS test data")
-cm10b <- confusionMatrix(predict(svmFit,newdata=oosvalSet),oosvalSet$classe)
-cm10b$overall["Kappa"]
-cm10b$overall["Accuracy"]
-```
-
-```{r, cache=T, warning=F}
-# Neural network
-my.grid <- expand.grid(.decay = c(0.5, 0.1), .size = c(5, 6, 7))
-nnFit <- train(classe ~ ., data = trainingSet,
-    method = "nnet", maxit = 1000, tuneGrid = my.grid, trace = F) 
-# print("Accuracy of Neural Network with test data")
-# cmx <- confusionMatrix(predict(nnFit,newdata=testSet),testSet$classe)
-# cmx$overall["Kappa"]
-# cmx$overall["Accuracy"]
-print("Accuracy of Neural Network with OOS test data")
-cmxb <- confusionMatrix(predict(nnFit,newdata=oosvalSet),oosvalSet$classe)
-cmxb$overall["Kappa"]
-cmxb$overall["Accuracy"]
-```
-
-```{r, cache=T, warning=F}
-# TODO: Try some stacked models?
-# TODO: Try some PCA or regularization to see if we can avoid overfitting?
-
-# 1) split into train/validation/test sets; 2) train different kinds of models using the training dataset; 3) create a new dataset with the predictions from the models in step 2, and the actual training outcomes as the outcome column; 4) fit another (e.g., "gam", "rf") model to this new dataset, and get these "improved predictions" ; 5) compare errors of each model and the combined one (sqrt(sum((pred-testing$outcome)^2))); 6) Predict and calculate errors of all models in the validation set (predict for the individual models valiation set, then re-predict the combined one with those predictions)
-#** For binary/multiclass data, normally predict with an odd number of models, and then do majority "vote" with the predictions they give
+# print("Accuracy of SVM with OOS test data")
+# cm10b <- confusionMatrix(predict(svmFit,newdata=oosvalSet),oosvalSet$classe)
+# cm10b$overall["Kappa"]
+# cm10b$overall["Accuracy"]
 ```
 
 
-# Comparing the models
+## Comparing models: In-sample error
 
-```{r}
-results <- resamples(list(NB=nbFit, LDA=ldaFit, TREE=treeFit, BAG=bagFit, RF=rfFit, KNN=knnFit, GBM=gbmFit, ANN=nnFit, SVM=svmFit)) #Do for all the models tried out
+After training all these models, we can check out the accuracies/Kappas they give on the training samples (which themselves were resampled to select the final model):
+```{r, echo=F, message=F, warning=FALSE, cache=T}
+models <- list(NB=nbFit, LDA=ldaFit, TREE=treeFit, BAG=bagFit, RF=rfFit, KNN=knnFit, GBM=gbmFit, GAM=gamFit, SVM=svmFit)
+results <- resamples(models)
 # summarize the distributions
 summary(results)
 # boxplots of results
@@ -305,18 +268,99 @@ bwplot(results)
 dotplot(results)
 ```
 
-## Cross-validation for tuning the model?
-In-sample error: Accuracy % missed, specificity, sensitivity, +/- predictive value, ROC curves?
+From this initial comparison, we see that XXXXXXXXXXXXXxxx seems to perform the best (average Accuracy XXXXX, average Kappa XXXXX). But... is this model overfitting? See below for further evaluations
 
-## Expected out-of-sample error
-... to validate out of sample error, try "leave-one-subject-out" validation (train the model on some subjects, validate in another one)
-OOS/Testing error: Accuracy % missed, specificity, sensitivity, +/- predictive value, ROC curves?
+## Comparing models: Out-of-sample error
 
+To get a clearer idea of how much we are overfitting, we use 
+
+```{r, echo=F, message=F, warning=FALSE, cache=T}
+library(xtable)
+ooserr <- data.frame(Model=character(), Accuracy=numeric(), Kappa=numeric())
+
+bestKappa <- -1
+bestModel <- NA
+# Calculate the errors
+for (i in 1:length(models)){
+    model <- models[i]
+    
+    cm <- confusionMatrix(predict(model,newdata=valSet),valSet$classe)
+    ooserr[i,"Kappa"] <- cm$overall["Kappa"]
+    ooserr[i,"Accuracy"] <- cm$overall["Accuracy"]
+    ooserr[i,"Model"] <- names(models)[[i]]
+    
+    #If this model is better than the previous ones, we keep it 
+    if(cm$overall["Kappa"] > bestKappa){
+        bestKappa <- cm$overall["Kappa"]
+        bestModel <- model
+    }
+}
+
+ooserr.table <- xtable(ooserr)
+#digits(ooserr.table)[c(2,6)] <- 0
+print(ooserr.table,floating=FALSE)
+
+# We get the final accuracies for the best model
+cmbest <- confusionMatrix(predict(bestModel,newdata=testSet),testSet$classe)
+```
+
+Using again the winning model (XXXXXXXXXXX) on the remaining (in-subject) test set, we get a value for accuracy of `r cmbest$overall["Accuracy"]` (Kappa `r cmbest$overall["Kappa"]`).
+
+## Comparing models: Out-of-subject error
+
+Finally, to have an estimation of whether we are overfitting with this model to the training set subjects, we try the models on a totally different subject, unseen by the algorithms so far, obtaining the following accuracies:
+
+```{r, echo=F, message=F, warning=FALSE, cache=T}
+library(xtable)
+oosuberr <- data.frame(Model=character(), Accuracy=numeric(), Kappa=numeric())
+
+bestKappa <- -1
+bestModel <- NA
+# Calculate the errors
+for (i in 1:length(models)){
+    model <- models[i]
+    
+    cm <- confusionMatrix(predict(model,newdata=oosvalSet),oosvalSet$classe)
+    oosuberr[i,"Kappa"] <- cm$overall["Kappa"]
+    oosubserr[i,"Accuracy"] <- cm$overall["Accuracy"]
+    oosuberr[i,"Model"] <- names(models)[[i]]
+    
+    #If this model is better than the previous ones, we keep it 
+    if(cm$overall["Kappa"] > bestKappa){
+        bestKappa <- cm$overall["Kappa"]
+        bestModel <- model
+    }
+}
+
+oosuberr.table <- xtable(oosuberr)
+#digits(ooserr.table)[c(2,6)] <- 0
+print(oosuberr.table,floating=FALSE)
+
+# We get the final accuracies for the best model
+cmbest2 <- confusionMatrix(predict(bestModel,newdata=testSet),testSet$classe)
+```
+
+Thus, we see how the winning subject-independent model (XXXXXXXXXXX) will probably have an accuracy of `r cmbest2$overall["Accuracy"]` (Kappa `r cmbest2$overall["Kappa"]`).
 
 # Final Testing the model (results for the assignment submission)
 
-```{r}
+Once we have taken this decision, we train our algorithm with the full training dataset provided (to squeeze out the maximum of prediction power from it), and we make the final test predictions to be uploaded for automated testing in Coursera (not executed here).
 
+```{r, eval=FALSE}
+# Re-train the winning algorithm with all the training data we have
+set.seed(7)
+finalFit <- train(classe~.,data=cleantrain,method="knn", verbose=F)
+
+# We predict the final test set and write it to files for submission
+answers <- predict(finalfit, newdata=cleantest)
+
+pml_write_files = function(x){
+  n = length(x)
+  for(i in 1:n){
+    filename = paste0("problem_id_",i,".txt")
+    write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+  }
+}
+
+pml_write_files(answers)
 ```
-... clean the data as for the training set
-... predict the test set and the results

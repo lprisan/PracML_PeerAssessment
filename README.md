@@ -1,6 +1,7 @@
 # PracML_PeerAssessment
 Course project code and report for the Coursera "Practical Machine Learning" MOOC.
 
+**You can also skip directly to the project writeup/report, at http://lprisan.github.io/PracML_PeerAssessment/ **
 
 ## Problem statement
 
@@ -33,3 +34,7 @@ The goal of your project is to predict the manner in which they did the exercise
 ### Reproducibility 
 
 Due to security concerns with the exchange of R code, your code will not be run during the evaluation by your classmates. Please be sure that if they download the repo, they will be able to view the compiled HTML version of your analysis. 
+
+## The Report
+
+The report with the analysis, training and prediction of the exercise classe is available in the `ProjectReport.Rmd` file, and online in [this project's gh-pages](http://lprisan.github.io/PracML_PeerAssessment)
