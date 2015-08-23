@@ -74,7 +74,7 @@ After this initial cleanup, we split the dataset in the following fashion (again
     b. 20% of the samples to test the algorithms and compare them against each other
     c. 20% of the samples to do the final testing of the **out-of-sample error**
 
-```{r}
+```{r, message=FALSE, echo=F, warning=F}
 set.seed(12345)
 # Keep one subject out, as a validation set to see how much out-of-subject error we would have
 subjout <- unique(cleantrain$user_name)[1]
@@ -92,7 +92,7 @@ valSet <- testvalSet[-inTest,]
 ```
 
 Once we have this clean training set, we further reduce the dimensionality of the dataset by removing near-zero variance features and highly-correlated predictors. 
-```{r}
+```{r, message=FALSE, echo=F, warning=F}
 # Remove near-zero variance variables (actually, none of them)
 nzv <- length(nearZeroVar(trainingSet))
 if(nzv>0) trainingSet <- trainingSet[,-nearZeroVar(trainingSet)]
@@ -102,14 +102,14 @@ trainingSet <- trainingSet[, -findCorrelation(cor(trainingSet[,-c(1,54)]))]
 Hence, our clean training set has `r (length(trainingSet)-1)` predictors.
 
 # Exploratory analysis
-Once we have our clean training dataset, we explore its variables (mostly, through density plots and Shapiro-Wilk tests for normality). Only one variable's set of graphs is shown here, for brevity. Actually, we find that many of the variables' densities look as additions of gaussians (so maybe generalized additive models would work well on this dataset?. We also plot the outcome variable (`classe`) against the different variables, to see if there are clear important predictors for that variable (not shown for brevity). We actually find no clear single one.
+Once we have our clean training dataset, we explore its variables (mostly, through density plots and Shapiro-Wilk tests for normality). Only one variable's set of graphs is shown here, for brevity. We also plot the outcome variable (`classe`) against the different variables, to see if there are clear important predictors for that variable (not shown for brevity). We actually find no clear single one.
 ```{r, echo=F, warning=FALSE, message=FALSE}
 # Density and normality tests
 i <- 1
 #for(i in 1:(length(trainingSet)-1) ){
     par(mfrow=c(1,2))
     plot(density(trainingSet[,i]))
-    shapiro.test(trainingSet[1:5000,i])
+#    shapiro.test(trainingSet[1:5000,i])
     qqnorm(trainingSet[,i])
     qqline(trainingSet[,i])
 #}
@@ -125,7 +125,7 @@ i <- 1
 Now, we train different algorithms we know for predictors:
 
 * Naive Bayes (NB)
-```{r, cache=T, warning=F}
+```{r, cache=T, warning=F, echo=F, message=F}
 set.seed(1234)
 #library(doParallel)
 #cl <- makeCluster(detectCores())
@@ -135,122 +135,48 @@ set.seed(1234)
 # Naive Bayes, with and without centering-scaling the variables
 set.seed(7)
 nbFit <- train(classe~.,data=trainingSet,method="nb")
-# print("Accuracy of NB with test data")
-# cm1 <- confusionMatrix(predict(nbFit,newdata=testSet),testSet$classe)
-# cm1$overall["Kappa"]
-# cm1$overall["Accuracy"]
-# print("Accuracy of NB with OOS test data")
-# cm1b <- confusionMatrix(predict(nbFit,newdata=oosvalSet),oosvalSet$classe)
-# cm1b$overall["Kappa"]
-# cm1b$overall["Accuracy"]
 ```
 * Linear Discriminant Analysis (LDA)
-```{r, cache=T, warning=F}
+```{r, cache=T, warning=F, echo=F, message=F}
 # LDA
 set.seed(7)
 ldaFit <- train(classe~.,data=trainingSet,preProcess=c("center","scale"),method="lda")
-# print("Accuracy of LDA with test data")
-# cm2 <- confusionMatrix(predict(ldaFit,newdata=testSet),testSet$classe)
-# cm2$overall["Kappa"]
-# cm2$overall["Accuracy"]
-# print("Accuracy of LDA with OOS test data")
-# cm2b <- confusionMatrix(predict(ldaFit,newdata=oosvalSet),oosvalSet$classe)
-# cm2b$overall["Kappa"]
-# cm2b$overall["Accuracy"]
 ```
 * Simple Decision Tree 
-```{r, cache=T, warning=F}
+```{r, cache=T, warning=F, echo=F, message=F}
 # Decision Trees
 set.seed(7)
 treeFit <- train(classe~.,data=trainingSet,method="rpart")
-# print("Accuracy of Decision Tree with test data")
-# cm3 <- confusionMatrix(predict(treeFit,newdata=testSet),testSet$classe)
-# cm3$overall["Kappa"]
-# cm3$overall["Accuracy"]
-# print("Accuracy of Decision Tree with OOS test data")
-# cm3b <- confusionMatrix(predict(treeFit,newdata=oosvalSet),oosvalSet$classe)
-# cm3b$overall["Kappa"]
-# cm3b$overall["Accuracy"]
 ```
 * Bagged Decision Trees
-```{r, cache=T, warning=F}
+```{r, cache=T, warning=F, echo=F, message=F}
 # Bagged trees
 set.seed(7)
 bagFit <- train(classe~.,data=trainingSet,method="treebag")
-# print("Accuracy of Bagged Tree with test data")
-# cm4 <- confusionMatrix(predict(bagFit,newdata=testSet),testSet$classe)
-# cm4$overall["Kappa"]
-# cm4$overall["Accuracy"]
-# print("Accuracy of Bagged Tree with OOS test data")
-# cm4b <- confusionMatrix(predict(bagFit,newdata=oosvalSet),oosvalSet$classe)
-# cm4b$overall["Kappa"]
-# cm4b$overall["Accuracy"]
 ```
 * Random Forest (RF)
-```{r, cache=T, warning=F}
+```{r, cache=T, warning=F, echo=F, message=F}
 # Random Forests
 set.seed(7)
 rfFit <- train(classe~.,data=trainingSet,method="rf", prox=T)
-# print("Accuracy of Random Forest with test data")
-# cm5 <- confusionMatrix(predict(rfFit,newdata=testSet),testSet$classe)
-# cm5$overall["Kappa"]
-# cm5$overall["Accuracy"]
-# print("Accuracy of Random Forest with OOS test data")
-# cm5b <- confusionMatrix(predict(rfFit,newdata=oosvalSet),oosvalSet$classe)
-# cm5b$overall["Kappa"]
-# cm5b$overall["Accuracy"]
 ```
 * K-Nearest Neighbors (KNN)
-```{r, cache=T, warning=F}
+```{r, cache=T, warning=F, echo=F, message=F}
 # Nearest Neighbors
 set.seed(7)
 knnFit <- train(classe~.,data=trainingSet,method="knn")
-# print("Accuracy of K Nearest Neighbors with test data")
-# cm6 <- confusionMatrix(predict(knnFit,newdata=testSet),testSet$classe)
-# cm6$overall["Kappa"]
-# cm6$overall["Accuracy"]
-# print("Accuracy of K Nearest Neighbors with OOS test data")
-# cm6b <- confusionMatrix(predict(knnFit,newdata=oosvalSet),oosvalSet$classe)
-# cm6b$overall["Kappa"]
-# cm6b$overall["Accuracy"]
 ```
 * Gradient-Boosted Trees (GBM)
-```{r, cache=T, warning=F}
+```{r, cache=T, warning=F, echo=F, message=F}
 # boosted trees gbm
 set.seed(7)
 gbmFit <- train(classe~.,data=trainingSet,method="gbm", verbose=F)
-# print("Accuracy of GBM (boosted trees) with test data")
-# cm7 <- confusionMatrix(predict(gbmFit,newdata=testSet),testSet$classe)
-# cm7$overall["Kappa"]
-# cm7$overall["Accuracy"]
-# print("Accuracy of GBM with OOS test data")
-# cm7b <- confusionMatrix(predict(gbmFit,newdata=oosvalSet),oosvalSet$classe)
-# cm7b$overall["Kappa"]
-# cm7b$overall["Accuracy"]
-```
-* Generalized Additive Models (GAM)
-```{r, cache=T, warning=F}
-# generalized additive model
-set.seed(7)
-gamFit <- train(classe~.,data=trainingSet,method="gam", verbose=F)
-# print("Accuracy of GAM (boosted additive model) with test data")
-# cm8 <- confusionMatrix(predict(gamFit,newdata=testSet),testSet$classe)
-# cm8$overall["Kappa"]
-# cm8$overall["Accuracy"]
 ```
 * Support Vector Machine (SVM)
-```{r, cache=T, warning=F}
+```{r, cache=T, warning=F, echo=F, message=F}
 # Support vector machine
 set.seed(7)
 svmFit <- train(classe~.,data=trainingSet,method="svmLinear")
-# print("Accuracy of SVM with test data")
-# cm10 <- confusionMatrix(predict(svmFit,newdata=testSet),testSet$classe)
-# cm10$overall["Kappa"]
-# cm10$overall["Accuracy"]
-# print("Accuracy of SVM with OOS test data")
-# cm10b <- confusionMatrix(predict(svmFit,newdata=oosvalSet),oosvalSet$classe)
-# cm10b$overall["Kappa"]
-# cm10b$overall["Accuracy"]
 ```
 
 
@@ -258,7 +184,8 @@ svmFit <- train(classe~.,data=trainingSet,method="svmLinear")
 
 After training all these models, we can check out the accuracies/Kappas they give on the training samples (which themselves were resampled to select the final model):
 ```{r, echo=F, message=F, warning=FALSE, cache=T}
-models <- list(NB=nbFit, LDA=ldaFit, TREE=treeFit, BAG=bagFit, RF=rfFit, KNN=knnFit, GBM=gbmFit, GAM=gamFit, SVM=svmFit)
+models <- list(NB=nbFit, LDA=ldaFit, TREE=treeFit, BAG=bagFit, RF=rfFit, KNN=knnFit, GBM=gbmFit, SVM=svmFit)
+
 results <- resamples(models)
 # summarize the distributions
 summary(results)
@@ -268,11 +195,11 @@ bwplot(results)
 dotplot(results)
 ```
 
-From this initial comparison, we see that XXXXXXXXXXXXXxxx seems to perform the best (average Accuracy XXXXX, average Kappa XXXXX). But... is this model overfitting? See below for further evaluations
+From this initial comparison, we see that Random Forest seems to perform the best (average Accuracy 0.99, average Kappa 0.98). But... is this model overfitting? See below for further evaluations
 
 ## Comparing models: Out-of-sample error
 
-To get a clearer idea of how much we are overfitting, we use 
+To get a clearer idea of how much we are overfitting, we use the data from a different subject we had set aside from the beginning, and predict the `classe` on those samples again.
 
 ```{r, echo=F, message=F, warning=FALSE, cache=T}
 library(xtable)
@@ -282,12 +209,12 @@ bestKappa <- -1
 bestModel <- NA
 # Calculate the errors
 for (i in 1:length(models)){
-    model <- models[i]
+    model <- models[[i]]
     
     cm <- confusionMatrix(predict(model,newdata=valSet),valSet$classe)
     ooserr[i,"Kappa"] <- cm$overall["Kappa"]
     ooserr[i,"Accuracy"] <- cm$overall["Accuracy"]
-    ooserr[i,"Model"] <- names(models)[[i]]
+    ooserr[i,"Model"] <- names(models)[i]
     
     #If this model is better than the previous ones, we keep it 
     if(cm$overall["Kappa"] > bestKappa){
@@ -298,13 +225,13 @@ for (i in 1:length(models)){
 
 ooserr.table <- xtable(ooserr)
 #digits(ooserr.table)[c(2,6)] <- 0
-print(ooserr.table,floating=FALSE)
+print(ooserr.table,floating=FALSE, type="html")
 
 # We get the final accuracies for the best model
 cmbest <- confusionMatrix(predict(bestModel,newdata=testSet),testSet$classe)
 ```
 
-Using again the winning model (XXXXXXXXXXX) on the remaining (in-subject) test set, we get a value for accuracy of `r cmbest$overall["Accuracy"]` (Kappa `r cmbest$overall["Kappa"]`).
+Using again the winning model (Random Forest) on the remaining (in-subject) test set, we get a value for accuracy of `r cmbest$overall["Accuracy"]` (Kappa `r cmbest$overall["Kappa"]`).
 
 ## Comparing models: Out-of-subject error
 
@@ -318,12 +245,12 @@ bestKappa <- -1
 bestModel <- NA
 # Calculate the errors
 for (i in 1:length(models)){
-    model <- models[i]
+    model <- models[[i]]
     
     cm <- confusionMatrix(predict(model,newdata=oosvalSet),oosvalSet$classe)
     oosuberr[i,"Kappa"] <- cm$overall["Kappa"]
-    oosubserr[i,"Accuracy"] <- cm$overall["Accuracy"]
-    oosuberr[i,"Model"] <- names(models)[[i]]
+    oosuberr[i,"Accuracy"] <- cm$overall["Accuracy"]
+    oosuberr[i,"Model"] <- names(models)[i]
     
     #If this model is better than the previous ones, we keep it 
     if(cm$overall["Kappa"] > bestKappa){
@@ -334,13 +261,13 @@ for (i in 1:length(models)){
 
 oosuberr.table <- xtable(oosuberr)
 #digits(ooserr.table)[c(2,6)] <- 0
-print(oosuberr.table,floating=FALSE)
+print(oosuberr.table,floating=FALSE, type="html")
 
 # We get the final accuracies for the best model
-cmbest2 <- confusionMatrix(predict(bestModel,newdata=testSet),testSet$classe)
+cmbest2 <- confusionMatrix(predict(bestModel,newdata=oosvalSet),oosvalSet$classe)
 ```
 
-Thus, we see how the winning subject-independent model (XXXXXXXXXXX) will probably have an accuracy of `r cmbest2$overall["Accuracy"]` (Kappa `r cmbest2$overall["Kappa"]`).
+Thus, we see how the winning subject-independent model is now Naive Bayes (accuracy of `r cmbest2$overall["Accuracy"]`, Kappa `r cmbest2$overall["Kappa"]`), and that Random Forests were overfitting on the subjects we were training with.
 
 # Final Testing the model (results for the assignment submission)
 
